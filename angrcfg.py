@@ -20,8 +20,10 @@ palmtree = utils.UsableTransformer(model_path="./palmtree/transformer.ep19", voc
 
 
 jsonex='.tgcfi.json' #.ifcc.json
-directory = "E:\\Research\\binaries"
-graphdir = "E:\\iCallasm50"
+# directory = "E:\\Research\\binaries"
+# graphdir = "E:\\iCallasm50"
+directory = "/home/isec/Documents/data/LLVM15-Data/O0/binaries"
+graphdir = "/home/isec/Documents/data/LLVM15-Data/O0/binaries_graph"
 onlyCount = True #True#
 
 codenodeid = 0
