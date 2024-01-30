@@ -1,19 +1,29 @@
 #!/bin/bash
-
 # Specify the directory where executable files are located
-root_directory="/path/to/parent/directory"
+root_directory="/home/isec/Documents/model/nano"
 
 # Specify the Python script you want to run
-python_script="/path/to/your/python/script.py"
+python_script="/home/isec/Documents/model/getAddress.py"
 
-# Find all executable files in all subdirectories
-executables=$(find "$root_directory" -type f -executable)
+json_str=".tgcfi.json"
 
-# Loop through each executable and run the Python script under its folder
-for executable in $executables; do
-    executable_directory=$(dirname "$executable")
-    echo "Running $python_script for $executable in $executable_directory"
-    cd "$executable_directory" || exit
-    python3 "$python_script" "$executable"
-    cd - || exit
-done
+readDir() {
+  local dir=$1
+  local files=$(ls "$dir")
+  #echo $dir
+  for file in $files; do
+    local path="$dir/$file"
+    #echo $path
+    if [ -d "$path" ]; then
+      readDir "$path"
+    else
+      local json_path="$path$json_str"
+      if [ -e "$json_path" ]; then
+        echo "Running $python_script for $path"
+        python3 "$python_script" "$path"
+      fi
+    fi
+  done
+}
+
+readDir "$root_directory"
