@@ -11,12 +11,13 @@ if len(sys.argv) < 2:
 binary_path = sys.argv[1]
 binary_folder, filename = binary_path.rsplit("/", 1)
 print(binary_path)
-print(binary_folder)
 project = angr.Project(binary_path, load_options={'auto_load_libs': False})
 #print(project.loader.main_object.sections)
 target_section_name = ".section_for_indirectcall"
 sections = project.loader.main_object.sections
 target_section = next((section for section in sections if section.name == target_section_name), None)
+if target_section == None:
+    print(f"{binary_path}'s target_section is None")
 #print(target_section)
 data_address = target_section.vaddr
 data_size = target_section.memsize
@@ -30,7 +31,8 @@ for i in range(len(data_arr)):
 	address = struct.unpack('<Q', data_arr[i])[0]
 	#print(address)
 	mem_set.append(hex(address))
-addressFile = os.path.join(binary_folder, "address.txt")
+addressFileName = filename + "_address.txt"
+addressFile = os.path.join(binary_folder,addressFileName)
 with open(addressFile, "w") as file:
 	# Write each item in the list to the file
   for item in mem_set:
