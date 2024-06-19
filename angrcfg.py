@@ -28,12 +28,21 @@ jsonex='.tgcfi.json' #.ifcc.json
 #addrdir = "/home/isec/Documents/data/Reorganized_Dataset/O1/ADDR_FILES"
 
 
-directory = "/home/isec/Documents/experiment_6"
-binary_dir = "/home/isec/Documents/experiment_6/valid_binary_list"
-json_dir = "/home/isec/Documents/experiment_6/valid_json_list"
-txt_dir = "/home/isec/Documents/experiment_6/valid_callsite_txt"
-graphdir = "/home/isec/Documents/experiment_6/graph_dir"
-addrdir = "/home/isec/Documents/experiment_6/address_dir"
+# directory = "/home/isec/Documents/experiment_6"
+# binary_dir = "/home/isec/Documents/experiment_6/valid_binary_list"
+# json_dir = "/home/isec/Documents/experiment_6/valid_json_list"
+# txt_dir = "/home/isec/Documents/experiment_6/valid_callsite_txt"
+# # graphdir = "/home/isec/Documents/experiment_6/graph_dir"
+# graphdir = "/home/isec/Documents/experiment_6/graph_dir_70"
+# addrdir = "/home/isec/Documents/experiment_6/address_dir"
+
+directory = "/home/isec/Documents/differentopdata/Reorganized_Dataset/O1/"
+binary_dir = "/home/isec/Documents/differentopdata/Reorganized_Dataset/O1/valid_binary_list"
+json_dir = "/home/isec/Documents/differentopdata/Reorganized_Dataset/O1/valid_json_list"
+txt_dir = "/home/isec/Documents/differentopdata/Reorganized_Dataset/O1/TEXT_FILES"
+graphdir = "/home/isec/Documents/differentopdata/Reorganized_Dataset/O1/graph_dir_70"
+# graphdir = "/home/isec/Documents/experiment_6/graph_dir_60"
+addrdir = "/home/isec/Documents/differentopdata/Reorganized_Dataset/addr_dir"
 onlyCount = False #True#
 
 codenodeid = 0
@@ -41,7 +50,7 @@ datanodeid = 0
 funcnodeid = 0
 addr_min = 0xffffffff
 addr_max = 0
-Ninst_addrs = 50 # 70 80 ? #basic blcok  first nth instruction (vectors)
+Ninst_addrs = 70 # 70 80 ? #basic blcok  first nth instruction (vectors)
 g_list = []
 asmdict = {}
 naming = 0
@@ -120,7 +129,6 @@ icalls = 0
 icallsite = 0
 starttime=time.time()
 mlog = open(os.path.join(directory, "output.log"),'w')
-print(1)
 # for accounts in os.listdir(directory):
 #     account = os.path.join(directory, accounts)
 #     #print(account)
@@ -139,7 +147,6 @@ print(1)
                     #project = "E:\\Research\\binaries\\bzar\\pandora-configbutton-pndman\\"
                     #binaries = '00701f351379817fb432a18c4188b58fdd7180845948d1667a056a7ef773c4c8.tgcfi.json'
 for root, dirs, jsonfiles in os.walk(json_dir):
-    print(3)
     for binaries in jsonfiles:
         jsonfile = os.path.join(root, binaries)
         print(jsonfile)
@@ -294,6 +301,7 @@ for root, dirs, jsonfiles in os.walk(json_dir):
                 callsiteFile = os.path.join(txt_dir, binaryName +".txt")
                 if not os.path.exists(callsiteFile):
                     print(f"Err: {callsiteFile} not in {txt_dir}")
+                    return 0
                 with open(callsiteFile, 'r') as f:
                     callsites =f.readlines()
                 callsites = [s[:-1] for s in callsites]
@@ -317,6 +325,8 @@ for root, dirs, jsonfiles in os.walk(json_dir):
             #print(nodelookup)
             for callKey in tdict['tg_targets']:
                 callsite_address_str= getCallsiteAddress(callKey)
+                if callsite_address_str == "no":
+                    continue
                 #print(f"callsite_address_16: {callsite_address_16}")
                 callsite_address = int(callsite_address_str)
                 #print(f"callsite_address: {callsite_address}")

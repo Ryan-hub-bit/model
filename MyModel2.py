@@ -82,7 +82,6 @@ class Model(nn.Module):
     def __init__(self, in_features, hidden_features, out_features, rel_names, dropout):
         super().__init__()
         self.sage = RGCN(in_features, hidden_features, out_features, rel_names, dropout)
-        #self.pred = HeteroDotProductPredictor(out_features*2)
 
     def forward(self, g, x):
         h = self.sage(g, x)
@@ -181,12 +180,13 @@ def get_one_graph(dataset, i, Adddata = True, Addfunc = True, Laplacian_pe=False
 skips = []
 
 # 处理开关
-def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/result/all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
+def exp_all(epochs = 6, hidden_features = 128, inslen = 30, savePATH = '/home/isec/model/result/all', Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False):
     dataset, rel_names = init_dataset(Revedges=Revedges, Adddata=Adddata, Addfunc=Addfunc, DataRefedgs = DataRefedgs, Calledges = Calledges, CodeRefedgs = CodeRefedgs, Laplacian_pe=Laplacian_pe)
+    start = time.time()
     pe = 0
     if Laplacian_pe:
         pe = 2
-    in_features = {'code':70*128+2+pe, 'data': 1+pe, 'func': 1+int(pe/2)}
+    in_features = {'code':inslen*128+2+pe, 'data': 1+pe, 'func': 1+int(pe/2)}
     if not Adddata:
         in_features.pop('data')
     if not Addfunc:
@@ -209,6 +209,7 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
         model.load_state_dict(th.load(os.path.join(savePATH, 'model.checkpoint')))
         predictor.load_state_dict(th.load(os.path.join(savePATH, 'predictor.checkpoint')))
         # 存模型跑出来的最优结果
+        #if os.path.exists(os.path.join(savePATH,'bestf1.txt')):
         with open(os.path.join(savePATH, 'bestf1.txt'), 'r') as f:
             bestf1 = float(f.read())
         with open(os.path.join(savePATH, 'f1s.txt'), 'r') as f:
@@ -235,9 +236,6 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
     if Laplacian_pe:
         randomlist = []
         for i in range(dataset.__len__()):
-        # for i in range(945,999):
-            # if i == 972 or i == 964:
-            #     continue
             graphfile = os.path.join(dataset.directory, str(i) + '.graphpe')
             if os.path.exists(graphfile) or os.path.getsize(graphfile[:-2])<70000000:
                 randomlist.append(i)
@@ -258,6 +256,8 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
         print(randomlist)
         for i in range(len(randomlist)):
             num += 1
+            if randomlist[i] in skips:
+                continue
             g, glabels, node_features = get_one_graph(dataset=dataset, i=randomlist[i], Adddata = Adddata, Addfunc = Addfunc, Laplacian_pe=Laplacian_pe)
             pred = model(g, node_features)
             edge = glabels['GT_edges']
@@ -295,6 +295,10 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
                 for i in validlist:#range(valids[0], valids[1]):
                     if i in skips:
                         continue
+                    # if i == 324:
+                    #     continue
+                    # if i == 278:
+                    #     continue
                     g, glabels, node_features = get_one_graph(dataset=dataset, i=i, Adddata = Adddata, Addfunc = Addfunc, Laplacian_pe=Laplacian_pe)
                     pred = model(g, node_features)
                     edge = glabels['GT_edges'] # eg: 12 代表12之间存在一个indrect call 是一个list
@@ -330,33 +334,70 @@ def exp_all(epochs = 6, hidden_features = 128, savePATH = '/home/isec/model/resu
                 print(f"Test time: {time.time()-timetest:.2f} F1: {f1[-1]:.4f} BestF1: {bestf1:.4f}")
                 model.train()
                 predictor.train()
+    end = time.time()
+    timeDuration = end - start
+    timefolder = savePATH.rsplit("/",1)[0]
+    subfolder = savePATH.rsplit("/", 1)[1]
+    timeElapse = f"inslen: {inslen}, subfolder:{subfolder}, timeDuration: {timeDuration} + \n"
+    timefile = os.path.join(timefolder, "timeelapse.txt")
+    with open(timefile, 'a') as file:
+        file.write(timeElapse)
 
 if __name__ == "__main__":
     epochs = 10
     # 图过于大
-    # skips = [517, 3002, 2260, 2263, 2267, 2264, 2508, 2348, 3732,
-    #          5361, 5400, 1462, 5952, 2330, 608, 5803, 2603, 2971, 6060, 6062, 2876,
-    #          4573, 5956, 2819, 5958, 4580, 4574, 4579, 4587, 3946, 2172, 5281, 3575, 3576, 3061, 5963, 5960, 1152, 1155,
-    #          4717, 5988,
-    #          5151,
-    #          ]
+    # skips = [1870,1887,282,597,828,1061,1361]
     hidden_features = 512
-
+    inslen = 60
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allpe',
+    exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = '/home/isec/model/compareExperiment60/allpe3',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/alloff',
-            Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allafter',
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = '/home/isec/model/resultoftotal/dataedgecoderef',
+            # Revedges = False, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = True, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = '/home/isec/model/resultoftotal/pe',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=True)
+
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,  savePATH = '/home/isec/model/resultoftotal/alloff',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen,savePATH = '/home/isec/model/resultoftotal/revedges',
+    #         Revedges = True, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen=inslen, savePATH = '/home/isec/model/resultoftotal/adddata',
+    #         Revedges = False, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = '/home/isec/model/resultoftotal/addfunc',
+    #         Revedges = False, Adddata = False, Addfunc = True, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features,inslen = inslen, savePATH = '/home/isec/model/resultoftotal/Calledges',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = True, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = '/home/isec/model/resultoftotal/codeRefedgs',
+    #         Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = True, Laplacian_pe=False)
+    exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = '/home/isec/model/resultoftotal/allafter',
             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
-'''
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnocall',
-            Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnorefdata',
-            Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = False, Calledges = True, CodeRefedgs = True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnorefcode',
-            Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = True, CodeRefedgs = False)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnodata',
-            Revedges = True, Adddata = False, Addfunc = False, DataRefedgs = True, Calledges = True, CodeRefedgs = True)
-    exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\all',
-            Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True)'''
+
+
+
+
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = '/home/isec/model/compareExperiment60/calledgesAddfunc',
+    #         Revedges = False, Adddata = False, Addfunc = True, DataRefedgs = False, Calledges = True, CodeRefedgs = False, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = '/home/isec/model/compareExperiment60/calledgesAddfunccode',
+    #         Revedges = False, Adddata = False, Addfunc = True, DataRefedgs = False, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = '/home/isec/model/compareExperiment60/calledgesAddfunccodedata',
+    #         Revedges = False, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
+    # exp_all(epochs = epochs, hidden_features=hidden_features, inslen = inslen, savePATH = '/home/isec/model/compareExperiment60/calledgesAddfunccodedatarev',
+    #         Revedges = True, Adddata = False, Addfunc = True, DataRefedgs = False, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
+
+# #     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allpe',
+# #             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=True)
+# #     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/alloff',
+# #             Revedges = False, Adddata = False, Addfunc = False, DataRefedgs = False, Calledges = False, CodeRefedgs = False, Laplacian_pe=False)
+# #     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = '/home/isec/model/result/allafter',
+# #             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True, Laplacian_pe=False)
+# # '''
+#     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnocall',
+#             Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = False, CodeRefedgs = True)
+#     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnorefdata',
+#             Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = False, Calledges = True, CodeRefedgs = True)
+#     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnorefcode',
+#             Revedges = True, Adddata = True, Addfunc = False, DataRefedgs = True, Calledges = True, CodeRefedgs = False)
+#     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\allnodata',
+#             Revedges = True, Adddata = False, Addfunc = False, DataRefedgs = True, Calledges = True, CodeRefedgs = True)
+#     exp_all(epochs = epochs, hidden_features=hidden_features, savePATH = 'E:\\iCallasm50\\all',
+#             Revedges = True, Adddata = True, Addfunc = True, DataRefedgs = True, Calledges = True, CodeRefedgs = True)'''
